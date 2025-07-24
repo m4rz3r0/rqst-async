@@ -1,5 +1,6 @@
 use miniserve::{http, Content, Request, Response};
 use serde_json::Value;
+use tokio::join;
 
 async fn index(_req: Request) -> Response {
     let content = include_str!("../index.html").to_string();
@@ -14,9 +15,17 @@ async fn chat(req: Request) -> Response {
         };
 
         if let Value::Array(messages) = &mut json_data["messages"] {
-            messages.push(Value::String(String::from("Fixed response")));
+            let messages_vec = messages.iter().flat_map(|message| if let Value::String(msg) = message {
+                Some(msg.clone())
+            } else {
+                None
+            }).collect::<Vec<String>>();
+            let responses = chatbot::query_chat(&messages_vec);
+            let random_number = chatbot::gen_random_number();
 
-            println!("{json_data}");
+            let (responses,random_number) = join!(responses, random_number);
+
+            messages.push(Value::String(responses[random_number % responses.len()].clone()));
 
             Ok(Content::Json(json_data.to_string()))
         } else {
