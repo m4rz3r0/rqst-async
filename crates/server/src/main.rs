@@ -20,13 +20,18 @@ async fn chat(req: Request) -> Response {
             } else {
                 None
             }).collect::<Vec<String>>();
-            let responses = chatbot::query_chat(&messages_vec);
-            let random_number = chatbot::gen_random_number();
+
+            let responses = tokio::spawn(async move { chatbot::query_chat(&messages_vec).await });
+            let random_number = tokio::spawn(chatbot::gen_random_number());
 
             let (responses,random_number) = join!(responses, random_number);
-
+            let Ok(responses) = responses else {
+                return Err(http::StatusCode::from_u16(400).unwrap());
+            };
+            let Ok(random_number) = random_number else {
+                return Err(http::StatusCode::from_u16(400).unwrap());
+            };
             messages.push(Value::String(responses[random_number % responses.len()].clone()));
-
             Ok(Content::Json(json_data.to_string()))
         } else {
             Err(http::StatusCode::from_u16(400).unwrap())
