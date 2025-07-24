@@ -20,7 +20,6 @@ async fn chat(req: Request) -> Response {
             } else {
                 None
             }).collect::<Vec<String>>();
-            println!("{messages_vec:?}");
             let responses = chatbot::query_chat(&messages_vec);
             let random_number = chatbot::gen_random_number();
 
